@@ -11,45 +11,66 @@
 ; full wish path
 (= tk-wish* "~/tcltk/bin/wish8.5")
 
+(deftem wish
+  in nil
+  out nil
+  err nil
+  ctrl nil
+  event-tbl (table))
+
 (def run-wish ()
   "run the wish shell, return an handler"
   (let (in out id err ctrl-f) (process tk-wish*)
-    (annotate 'wish (list in out err ctrl-f))))
+    (inst 'wish 'in in 'out out 'err err 'ctrl ctrl-f)))
 
 (def close-wish (w)
   "close the wish shell"
-  (let l (rep w)
-    (close (l 0))
-    (close (l 1))
-    (close (l 2))
-    ((l 3) 'kill)))
+  (close w!in)
+  (close w!out)
+  (close w!err)
+  (w!ctrl 'kill))
 
-(def tcl-conv (x)
+(def tcl-conv (x level)
   "emit code to convert x to a proper tcl representation
    lists are interpreted as sub-expressions
    e.g.: (expr \"5+6\") -> \"{[expr {5+6}]}\""
   (if (and (acons x) (is (car x) 'do))
         (cadr x)
+      (and (acons x) (is (car x) 'blk))
+        `(string #\{ ,@(intersperse (string #\; #\newline)
+                                    (map [tcl-conv _ 0] (cdr x))) #\})
+      (and (> level 0) (acons x))
+        `(string #\[ ,@(intersperse " " (map [tcl-conv _ 1] x)) #\])
       (acons x)
-        `(string #\[ ,@(intersperse " " (map tcl-conv x)) #\]) 
+        `(string ,@(intersperse " " (map [tcl-conv _ 1] x))) 
+      (and (isa x 'sym) (is ((string x) 0) #\$))
+        (sym (cut (string x) 1))
+      (isa x 'string)
+        `(string #\" ,x #\")
       `(string #\{ ',x #\})))
 
 (def send-wish (w . args)
   "send args to wish"
-  (w/stdout (cadr:rep w)
-    (map [pr _ " "] args)
-    (pr ";" #\newline)))
+  (let out (tostring
+             (map [pr  _ " "] args)
+             (pr ";" #\newline))
+    (prn "sending: " out)
+    (w/stdout w!out (pr out))))
 
-(def read-response (w)
-  (readline (car:rep w)))
+(def read-wish (w)
+  "read from the wish ouput"
+  (aif (readline w!in)
+    it
+    (err "Connection to wish closed!")))
 
 (mac dowish (w . body)
   "exec body as wish commands
-   expression starting with 'do are treated as arc expressions"
+   expression starting with 'do are treated as arc expressions
+   symbols starting with #\\$ are treated as variables (#\\$ is stripped)
+   (blk ...) is translated as a block of commands (to { ... })"
   (w/uniq ws
     `(let ,ws ,w
-       ,@(map (fn (e) `(do (send-wish ,ws ,@(map tcl-conv e))
-                           (read-response ,ws))) body))))
+       ,@(map (fn (e) `(send-wish ,ws ,@(map [tcl-conv _ 1] e))) body))))
 
 (mac w/wish (w . body)
   (unless (is (type w) 'sym) (err "wish var must be a symbol!"))
