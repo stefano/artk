@@ -4,14 +4,14 @@
 
 ; event handling
 
-(def next-event (w)
+(def next-event ((o w wish-shell*))
   (read-event w))
 
 (def event-key (path id)
   (string path #\~ id))
 
 ; an event is a list: ('event widget-path event-id . args)
-(def read-event (w)
+(def read-event ((o w wish-shell*))
   "read an event and dispatch it"
   (withs (re (read-wish w)
           event (do (prn re) (read (instring re))))
@@ -22,11 +22,11 @@
         (apply it args)
         (err:string "No such event: " event)))))
 
-(def main-event-loop (w)
+(def main-loop ((o w wish-shell*))
   "create an event dispatch loop (in a separate thread?)"
   (while t (read-event w)))
 
-(def tcl-event-dispatcher (w widget-path event-id)
+(def tcl-event-dispatcher (widget-path event-id (o w wish-shell*))
   "create a tcl procedure that prints a given event
    return the procedure name"
   (let name (uniq)
@@ -37,9 +37,9 @@
                             " " event-id " $args)" #\"))))))
     name))
 
-(def tk-bind (w widget-path event-id f)
+(def tk-bind (widget-path event-id f (o w wish-shell*))
   "do the binding"
-  (let name (tcl-event-dispatcher w widget-path event-id)
+  (let name (tcl-event-dispatcher widget-path event-id w)
     (dowish w (bind $widget-path $event-id $name))
     (= (w!event-tbl (event-key widget-path event-id)) f)
     t))
@@ -48,5 +48,5 @@
 ; (w/wish w
 ;   (dowish w
 ;     (grid (button .b -text "Hello, World!") -column 0 -row 0))
-;   (tk-bind w ".b" "<1>" (fn () (prn "Hello, World!")))
-;   (main-event-loop w))
+;   (tk-bind ".b" "<1>" (fn () (prn "Hello, World!")))
+;   (main-loop))

@@ -11,6 +11,9 @@
 ; full wish path
 (= tk-wish* "~/tcltk/bin/wish8.5")
 
+; default wish shell
+(= wish-shell* nil)
+
 (deftem wish
   in nil
   out nil
@@ -21,10 +24,12 @@
 (def run-wish ()
   "run the wish shell, return an handler"
   (let (in out id err ctrl-f) (process tk-wish*)
-    (inst 'wish 'in in 'out out 'err err 'ctrl ctrl-f)))
+    (= wish-shell* (inst 'wish 'in in 'out out 'err err 'ctrl ctrl-f))))
 
-(def close-wish (w)
+(def close-wish ((o w wish-shell*))
   "close the wish shell"
+  (when (is w wish-shell*)
+    (= wish-shell* nil))
   (close w!in)
   (close w!out)
   (close w!err)
@@ -35,7 +40,7 @@
    lists are interpreted as sub-expressions
    e.g.: (expr \"5+6\") -> \"{[expr {5+6}]}\""
   (if (and (acons x) (is (car x) 'do))
-        (cadr x)
+        `(string #\{ ,(cadr x) #\})
       (and (acons x) (is (car x) 'blk))
         `(string #\{ ,@(intersperse (string #\; #\newline)
                                     (map [tcl-conv _ 0] (cdr x))) #\})
