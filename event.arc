@@ -2,6 +2,9 @@
 
 ; do whatever you want with this
 
+(in-package artk)
+(using <arc>v3)
+
 ; event handling
 
 (def next-event ((o w wish-shell*))
@@ -33,8 +36,8 @@
     (dowish w
       (proc $name (blk args)
         (blk 
-          (puts (do (string #\" "(event " widget-path 
-                            " " event-id " $args)" #\"))))))
+          (puts (do (string #\" "(" 'event " " widget-path " " 
+                            event-id " $args)" #\"))))))
     name))
 
 (def tk-bind (widget-path event-id f (o w wish-shell*))

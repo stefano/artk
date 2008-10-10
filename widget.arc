@@ -2,6 +2,10 @@
 
 ; do whatever you want with this
 
+(in-package artk)
+(using <arc>v3)
+;(interface v1 mk-widget)
+
 ; widget objects
 
 (deftem widget
