@@ -4,7 +4,6 @@
 
 (in-package artk)
 (using <arc>v3)
-;(interface v1 mk-widget)
 
 ; widget objects
 
@@ -19,5 +18,16 @@
                               (string it!path #\. name)
                               (string #\. name))))
     (dowish w
-      (type (do widget!name)))
+      (<arc>$type (do widget!name)))
     widget))
+
+(mac cmd (widget cmd . args)
+  "send a command to a widget"
+  `(dowish wish-shell*
+     (,cmd (do (,widget 'path)) 
+           ,(map (fn (arg) `(do (let s ,arg (if (isa s 'widget) s!path s))))
+                 args))))
+
+(defcall widget (cmd . args)
+  (dowish wish-shell*
+    ($cmd 
